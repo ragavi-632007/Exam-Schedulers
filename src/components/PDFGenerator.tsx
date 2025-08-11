@@ -313,10 +313,11 @@ export const PDFGenerator: React.FC<PDFGeneratorProps> = ({
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "normal");
       pdf.text("Copy To:", tableX, copyY);
-      pdf.text("1. The head of the department", tableX + 8, copyY + 6);
-      pdf.text("2. To be read in all classes.", tableX + 8, copyY + 12);
-      pdf.text("3. Main notice board.", tableX + 8, copyY + 18);
-      pdf.text("4. File copy.", tableX + 8, copyY + 24);
+      // Single-line copy list with dotted separators
+      pdf.setFontSize(8);
+      const copyLine =
+        "1. The head of the department  2. To be read in all classes  3. Main notice board. 4. File copy. ";
+      pdf.text(copyLine, tableX + 22, copyY);
 
       // Signature block (only 'PRINCIPAL')
       const sigY = copyY + 30;
