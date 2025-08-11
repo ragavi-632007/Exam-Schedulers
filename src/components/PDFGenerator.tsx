@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Download, Calendar } from "lucide-react";
 import jsPDF from "jspdf";
 
@@ -33,6 +33,24 @@ export const PDFGenerator: React.FC<PDFGeneratorProps> = ({
   const [scheduledExams, setScheduledExams] = useState<any[]>([]);
   const [departments, setDepartments] = useState(defaultDepartments);
   const [loading, setLoading] = useState(true);
+
+  // Compute the first (earliest) scheduled date for the preview based on filters
+  const firstPreviewDate = useMemo(() => {
+    const dates: Date[] = scheduledExams
+      .filter((exam) => {
+        const matchesYear = String(exam.year) === selectedYear;
+        const type = exam.examType || exam.exam_type; // support both keys
+        const matchesType = type ? type === selectedExam : true; // if missing, don't filter out
+        const hasDate = Boolean(exam.scheduledDate || exam.examDate);
+        return matchesYear && matchesType && hasDate;
+      })
+      .map((exam) => new Date((exam.scheduledDate || exam.examDate) as string))
+      .filter((d) => !isNaN(d.getTime()));
+
+    if (dates.length === 0) return null;
+    dates.sort((a, b) => a.getTime() - b.getTime());
+    return dates[0];
+  }, [scheduledExams, selectedYear, selectedExam]);
 
   // Load scheduled exams and departments
   useEffect(() => {
@@ -170,22 +188,24 @@ export const PDFGenerator: React.FC<PDFGeneratorProps> = ({
       // Circular content (dynamic start date, exam name, year)
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "normal");
-      // Find the earliest exam date from scheduledExams for the selected year and exam type
+      // Find the earliest exam date for the selected year and exam type (supporting multiple key names)
       let minExamDate: Date | null = null;
       scheduledExams
-        .filter(
-          (exam) =>
-            String(exam.year) === selectedYear &&
-            exam.examType === selectedExam &&
-            exam.scheduledDate
-        )
+        .filter((exam) => {
+          const matchesYear = String(exam.year) === selectedYear;
+          const type = exam.examType || exam.exam_type; // support both keys
+          const matchesType = type ? type === selectedExam : true; // if type missing, don't exclude
+          const hasDate = Boolean(exam.scheduledDate || exam.examDate);
+          return matchesYear && matchesType && hasDate;
+        })
         .forEach((exam) => {
-          const d = new Date(exam.scheduledDate as string);
-          if (
-            !minExamDate ||
-            (minExamDate instanceof Date && d.getTime() < minExamDate.getTime())
-          )
-            minExamDate = d;
+          const raw = (exam.scheduledDate || exam.examDate) as string;
+          const d = new Date(raw);
+          if (!isNaN(d.getTime())) {
+            if (!minExamDate || d.getTime() < (minExamDate as Date).getTime()) {
+              minExamDate = d;
+            }
+          }
         });
       let startDateStr =
         minExamDate && !isNaN((minExamDate as Date).getTime())
@@ -400,12 +420,15 @@ export const PDFGenerator: React.FC<PDFGeneratorProps> = ({
               {/* Dynamic Scheduled Exams Table Preview */}
               {scheduledExams.length > 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-start mb-4">
+                  <div className="flex items-start mb-1">
                     <Calendar className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                     <h5 className="text-sm font-medium text-green-800">
                       Scheduled Exams Table Preview
                     </h5>
                   </div>
+                  <p className="text-xs text-gray-700 mb-3">
+                    Start date: {firstPreviewDate ? firstPreviewDate.toLocaleDateString("en-GB") : "-"}
+                  </p>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-xs border border-green-200 rounded-lg">
                       <thead>

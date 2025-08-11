@@ -602,7 +602,7 @@ export const AdminDashboard: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-200">
+                  <div className="divide-y divide-gray-200 max-h-[50vh] overflow-auto">
                     {scheduledExams.map((schedule) => (
                       <div
                         key={schedule.id}
@@ -629,10 +629,6 @@ export const AdminDashboard: React.FC = () => {
                                 ).toLocaleDateString()}
                               </p>
                               <p className="text-sm text-gray-600"></p>
-                              <p className="text-sm text-gray-600">
-                                <span className="font-medium">Room:</span>{" "}
-                                {schedule.room || "TBA"}
-                              </p>
                             </div>
                             <div className="flex items-center space-x-2 mt-2">
                               <User className="h-4 w-4 text-gray-400" />
@@ -675,7 +671,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          )}{" "}
+          )}
           {/* PDF Generation Tab */}
           {activeTab === "pdf" && (
             <div className="space-y-6">

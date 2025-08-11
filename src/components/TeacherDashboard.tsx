@@ -661,7 +661,7 @@ export const TeacherDashboard: React.FC = () => {
                                       {exam.subjectCode}
                                     </span>
                                     <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                      Year {exam.year} • Sem {exam.semester}
+                                      Year {exam.year}
                                     </span>
                                   </div>
                                   <p className="text-sm text-gray-600 mt-1">
@@ -692,18 +692,13 @@ export const TeacherDashboard: React.FC = () => {
                       <div className="flex items-center">
                         <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
                         <h3 className="text-lg font-medium text-gray-900">
-                          Scheduled Exams (
-                          {
-                            scheduledExams.filter(
-                              (exam) => exam.year === selectedYear
-                            ).length
-                          }
-                          )
+                          Scheduled Exams 
                         </h3>
                       </div>
                     </div>
 
-                    {scheduledExams.filter((exam) => exam.year === selectedYear)
+                    {scheduledExams
+                      .filter((exam) => exam.year === selectedYear && exam.department?.trim().toLowerCase() === user?.department?.trim().toLowerCase())
                       .length === 0 ? (
                       <div className="px-6 py-8 text-center">
                         <p className="text-gray-500">
@@ -713,7 +708,7 @@ export const TeacherDashboard: React.FC = () => {
                     ) : (
                       <div className="divide-y divide-gray-200">
                         {scheduledExams
-                          .filter((exam) => exam.year === selectedYear)
+                          .filter((exam) => exam.year === selectedYear && exam.department?.trim().toLowerCase() === user?.department?.trim().toLowerCase())
                           .map((exam) => (
                             <div key={exam.id} className="px-6 py-4">
                               <div className="flex items-center justify-between">
@@ -726,7 +721,7 @@ export const TeacherDashboard: React.FC = () => {
                                       {exam.subjectCode}
                                     </span>
                                     <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                      Year {exam.year} • Sem {exam.semester}
+                                      Year {exam.year}
                                     </span>
                                   </div>
                                   <p className="text-sm text-gray-600 mt-1">
