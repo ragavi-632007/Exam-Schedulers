@@ -16,25 +16,21 @@ import {
   Edit,
 } from "lucide-react";
 import { ExamScheduler } from "./ExamScheduler";
-// ...existing code...
 import { EditExamSchedule } from "./EditExamSchedule";
+import { ExamTimetablePreview } from "./ExamTimetablePreview";
 import { examService } from "../services/examService";
 
 export const TeacherDashboard: React.FC = () => {
   const { user, logout } = useAuth();
-  const { updateExam } = useExams();
+  const { exams, scheduledExams, loading, refreshExams, refreshScheduledExams } = useExams();
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "subjects" | "schedule"
+    "dashboard" | "subjects" | "schedule" | "timetable"
   >("dashboard");
-  // Removed unused teacherExams state
-  const [scheduledExams, setScheduledExams] = useState<Exam[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<2 | 3>(2);
   const [selectedExamType, setSelectedExamType] = useState<
     "IA1" | "IA2" | "IA3"
   >("IA1");
-  const [subjects, setSubjects] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
@@ -57,66 +53,36 @@ export const TeacherDashboard: React.FC = () => {
     { value: "IA3", label: "Internal Assessment 3" },
   ];
 
-  // Load teacher's exams as before
+  // Load exam alerts to get exam period dates
   useEffect(() => {
-    const loadTeacherData = async () => {
-      if (user?.id) {
-        try {
-          setLoading(true);
-          // Get scheduled exams for this teacher's department
-          const teacherScheduled = await examService.getScheduledExams();
-          const filteredScheduled = teacherScheduled.filter(
-            (exam) =>
-              exam.department?.trim().toLowerCase() ===
-              user?.department?.trim().toLowerCase()
-          );
-          setScheduledExams(filteredScheduled);
-        } catch (error) {
-          console.error("Error loading teacher data:", error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    loadTeacherData();
-  }, [user?.id]);
-
-  // Load all subjects and exam settings from the database
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchExamAlerts = async () => {
       try {
-        const [subjectsData, examAlerts] = await Promise.all([
-          examService.getExams(),
-          examService.getExamAlerts(),
-        ]);
-        setSubjects(subjectsData);
+        const examAlerts = await examService.getExamAlerts();
         if (examAlerts && examAlerts.length > 0) {
           setExamStartDate(examAlerts[0].startDate || "");
           setExamEndDate(examAlerts[0].endDate || "");
         }
       } catch (err) {
-        console.error("Error fetching subjects or exam settings:", err);
-      } finally {
-        setLoading(false);
+        console.error("Error fetching exam alerts:", err);
       }
     };
-    fetchData();
+    fetchExamAlerts();
   }, []);
 
   // Only show subjects for the teacher's department (case-insensitive and trim whitespace)
-  const departmentSubjects = subjects.filter(
-    (subj: any) =>
-      subj.department?.trim().toLowerCase() ===
+  const departmentSubjects = exams.filter(
+    (exam: any) =>
+      exam.department?.trim().toLowerCase() ===
       user?.department?.trim().toLowerCase()
   );
+  
   const pendingExams = departmentSubjects.filter(
     (exam: any) => exam.status === "pending"
   );
 
   const handleUpdateSchedule = async () => {
     // Refresh data after update
-    await refreshData();
+    await refreshScheduledExams();
     setEditingSchedule(null);
   };
 
@@ -134,14 +100,11 @@ export const TeacherDashboard: React.FC = () => {
       );
 
       // Update local state
-      updateExam(examId, {
-        scheduledDate: date,
-        status: "scheduled",
-        examType: selectedExamType,
-      });
-
+      // Note: We don't need to manually update local state as the context will handle it
+      
       // Refresh data from database to reflect changes
-      await refreshData();
+      await refreshScheduledExams();
+      await refreshExams();
 
       setSelectedExam(null);
 
@@ -166,35 +129,14 @@ export const TeacherDashboard: React.FC = () => {
     }
   };
 
-  // Function to refresh all data
-  const refreshData = async () => {
-    if (user?.id) {
-      try {
-        setLoading(true);
-
-        // Refresh scheduled exams - show all scheduled exams for the teacher's department
-        const teacherScheduled = await examService.getScheduledExams();
-        const filteredScheduled = teacherScheduled.filter(
-          (exam) =>
-            exam.department?.trim().toLowerCase() ===
-            user?.department?.trim().toLowerCase()
-        );
-        setScheduledExams(filteredScheduled);
-
-        // Refresh subjects
-        const data = await examService.getExams();
-        setSubjects(data);
-      } catch (error) {
-        console.error("Error refreshing data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
+  // Calculate completion rate based on teacher's department only
+  const teacherScheduledExams = scheduledExams.filter(
+    (exam: any) => exam.department?.trim().toLowerCase() === user?.department?.trim().toLowerCase()
+  );
+  
   const completionRate =
     departmentSubjects.length > 0
-      ? Math.round((scheduledExams.length / departmentSubjects.length) * 100)
+      ? Math.round((teacherScheduledExams.length / departmentSubjects.length) * 100)
       : 0;
 
   const stats = [
@@ -207,7 +149,7 @@ export const TeacherDashboard: React.FC = () => {
     },
     {
       label: "Scheduled Exams",
-      value: scheduledExams.length.toString(),
+      value: teacherScheduledExams.length.toString(),
       icon: Calendar,
       color: "text-green-600 bg-green-100",
       progress: 0,
@@ -296,6 +238,19 @@ export const TeacherDashboard: React.FC = () => {
                 <span>Schedule Exams</span>
               </button>
             </li>
+            <li>
+              <button
+                onClick={() => setActiveTab("timetable")}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                  activeTab === "timetable"
+                    ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Calendar className="h-5 w-5" />
+                <span>Timetable Preview</span>
+              </button>
+            </li>
           </ul>
         </nav>
 
@@ -354,7 +309,12 @@ export const TeacherDashboard: React.FC = () => {
             <span>/</span>
             <span>Faculty Portal</span>
             <span>/</span>
-            <span className="text-gray-900 font-medium">Teacher Dashboard</span>
+            <span className="text-gray-900 font-medium">
+              {activeTab === "dashboard" && "Dashboard"}
+              {activeTab === "subjects" && "My Subjects"}
+              {activeTab === "schedule" && "Schedule Exams"}
+              {activeTab === "timetable" && "Timetable Preview"}
+            </span>
           </div>
         </div>
 
@@ -523,10 +483,10 @@ export const TeacherDashboard: React.FC = () => {
                                 <div className="flex-1">
                                   <div className="flex items-center space-x-3">
                                     <h3 className="text-base font-medium text-gray-900">
-                                      {subj.subjectName || subj.name}
+                                      {subj.subjectName}
                                     </h3>
                                     <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
-                                      {subj.subjectCode || subj.subcode}
+                                      {subj.subjectCode}
                                     </span>
                                   </div>
                                   <p className="text-sm text-gray-600">
@@ -817,6 +777,21 @@ export const TeacherDashboard: React.FC = () => {
                       onUpdate={handleUpdateSchedule}
                     />
                   )}
+                </div>
+              )}
+
+              {/* Timetable Tab */}
+              {activeTab === "timetable" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                       Timetable Preview
+                    </h2>
+                    
+                  </div>
+                  
+                  {/* ExamTimetablePreview Component */}
+                  <ExamTimetablePreview scheduledExams={scheduledExams} />
                 </div>
               )}
             </>

@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { X, Calendar, Users, Plus } from "lucide-react";
-import { departments } from "../data/mockData";
 import { ExamAlert } from "../types";
 import { examService } from "../services/examService";
+
+// Define departments list directly instead of importing from mockData
+const departments = [
+  'ACT', 'AIDS', 'AIML', 'BME', 'CE', 'CSBS', 'CSE', 
+  'CYBER', 'ECE', 'EEE', 'IT', 'MCT', 'MECH', 'VLSI'
+];
 
 interface CreateExamAlertProps {
   onClose: () => void;
