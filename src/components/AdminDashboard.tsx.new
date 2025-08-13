@@ -11,6 +11,7 @@ import {
   Download,
   Home,
   Building,
+  Bell,
   User,
   LogOut,
   Clock,
@@ -19,6 +20,7 @@ import {
 import { CreateExamAlert } from "./CreateExamAlert";
 import { EditExamAlert } from "./EditExamAlert";
 import { EditExamSchedule } from "./EditExamSchedule";
+import { ExamScheduleTable } from "./ExamScheduleTable";
 import { PDFGenerator } from "./PDFGenerator";
 import { StaffManagement } from "./StaffManagement";
 import { SubjectManagement } from "./SubjectManagement";
@@ -515,7 +517,7 @@ export const AdminDashboard: React.FC = () => {
                           <span className="text-sm text-gray-600">
                             Departments:{" "}
                           </span>
-                          {alert.departments.map((dept) => (
+                          {alert.departments.map((dept, i) => (
                             <span
                               key={dept}
                               className="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded mr-1"
