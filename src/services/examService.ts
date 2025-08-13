@@ -771,10 +771,52 @@ export const examService = {
     };
   },
 
-  // Update exam schedule
+  // Update exam schedule with swap functionality
   async updateExamSchedule(scheduleId: string, updates: any): Promise<void> {
     const updateData: any = {};
 
+    // Check for exam date conflicts in the same department
+    if (updates.exam_date) {
+      // Get the current exam schedule details
+      const { data: currentExam, error: currentError } = await supabase
+        .from("exam_schedules")
+        .select(`
+          *,
+          departments!exam_schedules_department_id_fkey(*)
+        `)
+        .eq("id", scheduleId)
+        .single();
+
+      if (currentError) throw new Error(currentError.message);
+      if (!currentExam) throw new Error("Exam schedule not found");
+
+      // Check for any exam on the new date in the same department
+      const { data: conflictingExam, error: conflictError } = await supabase
+        .from("exam_schedules")
+        .select(`
+          *,
+          departments!exam_schedules_department_id_fkey(*)
+        `)
+        .eq("exam_date", updates.exam_date)
+        .eq("department_id", currentExam.department_id)
+        .neq("id", scheduleId)
+        .maybeSingle();
+
+      if (conflictError) throw new Error(conflictError.message);
+
+      // If there's a conflicting exam, perform the swap
+      if (conflictingExam) {
+        // Update the conflicting exam to take the current exam's date
+        const { error: swapError } = await supabase
+          .from("exam_schedules")
+          .update({ exam_date: currentExam.exam_date })
+          .eq("id", conflictingExam.id);
+
+        if (swapError) throw new Error("Failed to swap exam dates: " + swapError.message);
+      }
+    }
+
+    // Update the current exam schedule
     if (updates.exam_date) updateData.exam_date = updates.exam_date;
     if (updates.exam_type) updateData.exam_type = updates.exam_type;
     if (updates.room) updateData.room = updates.room;
